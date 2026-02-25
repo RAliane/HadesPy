@@ -1,0 +1,276 @@
+# GitLab CI/CD Pipeline
+# AI Agent Full Stack - Directus + FastAPI + FastMCP + Cognee
+
+stages:
+  - lint
+  - test
+  - security
+  - build
+  - deploy
+
+variables:
+  # Podman/Buildah configuration
+  STORAGE_DRIVER: vfs
+  BUILDAH_FORMAT: docker
+  # Image name
+  IMAGE_NAME: ai-agent
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  # Registry
+  CI_REGISTRY_IMAGE: $CI_REGISTRY/ai-engineering/ai-agent
+
+# ============================================
+# Cache Configuration
+# ============================================
+default:
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .uv/
+      - .pytest_cache/
+      - .ruff_cache/
+
+# ============================================
+# Lint Stage
+# ============================================
+lint:ruff:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - pip install uv
+    - uv pip install --system ruff
+  script:
+    - ruff check src/
+    - ruff format --check src/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+lint:mypy:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - pip install uv
+    - uv pip install --system -e ".[dev]"
+  script:
+    - mypy src/ --ignore-missing-imports
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ============================================
+# Test Stage
+# ============================================
+test:unit:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apt-get update && apt-get install -y git
+    - pip install uv
+    - uv pip install --system -e ".[dev]"
+  script:
+    - pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing -m "not integration and not slow"
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.xml
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+test:integration:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apt-get update && apt-get install -y git
+    - pip install uv
+    - uv pip install --system -e ".[dev]"
+  script:
+    - pytest tests/ -v -m integration --timeout=300
+  timeout: 15 minutes
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: true
+
+# ============================================
+# Security Stage
+# ============================================
+security:bandit:
+  stage: security
+  image: python:3.12-slim
+  before_script:
+    - pip install bandit
+  script:
+    - bandit -r src/ -f json -o bandit-report.json || true
+    - bandit -r src/ -ll
+  artifacts:
+    paths:
+      - bandit-report.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+security:pip-audit:
+  stage: security
+  image: python:3.12-slim
+  before_script:
+    - pip install pip-audit
+  script:
+    - pip-audit --requirement pyproject.toml --format=json --output=pip-audit-report.json || true
+    - pip-audit --requirement pyproject.toml
+  artifacts:
+    paths:
+      - pip-audit-report.json
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+security:trivy:
+  stage: security
+  image: aquasec/trivy:latest
+  script:
+    - trivy filesystem --exit-code 0 --no-progress --format json -o trivy-report.json .
+    - trivy filesystem --exit-code 1 --severity HIGH,CRITICAL --no-progress .
+  artifacts:
+    paths:
+      - trivy-report.json
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ============================================
+# Build Stage
+# ============================================
+build:podman:
+  stage: build
+  image: quay.io/podman/stable:latest
+  services:
+    - docker:dind
+  variables:
+    STORAGE_DRIVER: vfs
+  before_script:
+    - podman --version
+    - buildah --version
+  script:
+    # Build multi-stage image
+    - podman build
+      --format docker
+      --target production
+      --tag $IMAGE_NAME:$IMAGE_TAG
+      --tag $IMAGE_NAME:latest
+      .
+
+    # Test the image
+    - podman run --rm $IMAGE_NAME:$IMAGE_TAG python -c "import src; print('Import OK')"
+
+    # Save image for deployment
+    - podman save -o $IMAGE_NAME-$IMAGE_TAG.tar $IMAGE_NAME:$IMAGE_TAG
+    - gzip $IMAGE_NAME-$IMAGE_TAG.tar
+  artifacts:
+    paths:
+      - $IMAGE_NAME-$IMAGE_TAG.tar.gz
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build:registry:
+  stage: build
+  image: quay.io/podman/stable:latest
+  services:
+    - docker:dind
+  variables:
+    STORAGE_DRIVER: vfs
+  before_script:
+    - podman login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - podman build
+      --format docker
+      --target production
+      --tag $CI_REGISTRY_IMAGE:$IMAGE_TAG
+      --tag $CI_REGISTRY_IMAGE:latest
+      .
+    - podman push $CI_REGISTRY_IMAGE:$IMAGE_TAG
+    - podman push $CI_REGISTRY_IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ============================================
+# Deploy Stage
+# ============================================
+deploy:staging:
+  stage: deploy
+  image: quay.io/podman/stable:latest
+  environment:
+    name: staging
+    url: https://api-staging.example.com
+  before_script:
+    - podman --version
+    - podman-compose --version
+  script:
+    # Load the built image
+    - gunzip -c $IMAGE_NAME-$IMAGE_TAG.tar.gz | podman load
+
+    # Deploy to staging
+    - podman-compose -f podman-compose.yml -p ai-agent-staging up -d
+
+    # Health check
+    - sleep 10
+    - curl -f http://localhost:8000/health || exit 1
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging"
+
+deploy:production:
+  stage: deploy
+  image: alpine:latest
+  environment:
+    name: production
+    url: https://api.example.com
+  before_script:
+    - apk add --no-cache openssh-client rsync
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+  script:
+    # Copy compose file and configs
+    - rsync -avz --delete
+      --exclude='.git'
+      --exclude='*.tar.gz'
+      ./ $DEPLOY_USER@$DEPLOY_HOST:/opt/ai-agent/
+
+    # Deploy on remote server
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        cd /opt/ai-agent &&
+        podman-compose pull &&
+        podman-compose up -d &&
+        podman system prune -f
+      "
+
+    # Verify deployment
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "
+        curl -f http://localhost:8000/health
+      "
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  when: manual
+  only:
+    - tags
