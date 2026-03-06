@@ -70,7 +70,7 @@ test:unit:
     DOCKER_HOST: tcp://docker:2376
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
-    - apt-get update && apt-get install -y git
+    - apt update && apt install -y git
     - pip install uv
     - uv pip install --system -e ".[dev]"
   script:
@@ -97,7 +97,7 @@ test:integration:
     DOCKER_HOST: tcp://docker:2376
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
-    - apt-get update && apt-get install -y git
+    - apt update && apt install -y git
     - pip install uv
     - uv pip install --system -e ".[dev]"
   script:
