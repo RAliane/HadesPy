@@ -114,7 +114,7 @@ security:bandit:
   stage: security
   image: python:3.12-slim
   before_script:
-    - pip install bandit
+    - uv pip install bandit
   script:
     - bandit -r src/ -f json -o bandit-report.json || true
     - bandit -r src/ -ll
@@ -130,13 +130,13 @@ security:pip-audit:
   stage: security
   image: python:3.12-slim
   before_script:
-    - pip install pip-audit
+    - uv pip install pip-audit
   script:
-    - pip-audit --requirement pyproject.toml --format=json --output=pip-audit-report.json || true
-    - pip-audit --requirement pyproject.toml
+    - uv pip-audit --requirement pyproject.toml --format=json --output=pip-audit-report.json || true
+    - uv pip-audit --requirement pyproject.toml
   artifacts:
     paths:
-      - pip-audit-report.json
+      - uv pip-audit-report.json
     expire_in: 1 week
   allow_failure: true
   rules:
