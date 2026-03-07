@@ -132,11 +132,11 @@ security:pip-audit:
   before_script:
     - uv pip install pip-audit
   script:
-    - uv pip-audit --requirement pyproject.toml --format=json --output=pip-audit-report.json || true
-    - uv pip-audit --requirement pyproject.toml
+    - pip-audit --requirement pyproject.toml --format=json --output=pip-audit-report.json || true
+    - pip-audit --requirement pyproject.toml
   artifacts:
     paths:
-      - uv pip-audit-report.json
+      - pip-audit-report.json
     expire_in: 1 week
   allow_failure: true
   rules:
