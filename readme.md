@@ -31,10 +31,11 @@ HadesPy is a comprehensive AI agent system that combines several technologies to
 ## Prerequisites
 
 Before you start, make sure you have the following:
-- Python 3.12 or higher
-- UV package manager
-- Podman and podman-compose
+- ![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python&logoColor=white) Python 3.12 or higher
+- ![UV](https://img.shields.io/badge/UV-Package_Manager-000000?logo=python&logoColor=white) UV package manager
+- ![Podman](https://img.shields.io/badge/Podman-89D4C8?logo=podman&logoColor=white) Podman and podman-compose **or** ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) Docker
 - (Optional) A Linux server for deployment
+
 
 ## Installation
 
