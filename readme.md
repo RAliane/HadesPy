@@ -1,0 +1,130 @@
+# HadesPy: AI Agent Full Stack
+
+Welcome to HadesPy, an end-to-end AI agent system designed to be user-friendly and secure.
+
+## Introduction
+
+HadesPy is a comprehensive AI agent system that combines several technologies to provide a robust and secure platform for AI applications. It is designed to be easy to use, even for those who are not familiar with advanced technical concepts.
+
+## Features
+
+- **Real-time Collaboration**: Work with AI agents in real-time.
+- **Local Models**: Use local models with Ollama or add your own API keys for different model providers.
+- **Secure Environment**: Operates in a zero-trust environment with triple-layer networks, ensuring data security.
+- **Easy Deployment**: Can be easily deployed on Render as a service.
+- **Customizable**: Add your own connectors through API keys.
+- **Smart Memory**: Access to Cognee AI smart memory, caching, and rate limiting.
+- **User-Friendly Interfaces**: Choose between Gradio and Streamlit for a user-friendly experience.
+
+## Prerequisites
+
+Before you start, make sure you have the following:
+- Python 3.12 or higher
+- UV package manager
+- Podman and podman-compose
+- (Optional) A Linux server for deployment
+
+## Installation
+
+### Step 1: Clone the Repository
+First, clone the repository to your local machine:
+
+```bash
+git clone https://github.com/RAliane/HadesPy.git
+cd HadesPy
+```
+
+### Step 2: Run the Bootstrap Script
+Run the bootstrap script to set up the environment:
+
+```bash
+chmod +x scripts/bootstrap.sh
+./scripts/bootstrap.sh
+```
+
+### Step 3: Configure the Environment
+Edit the environment configuration file:
+
+```bash
+vim .env
+```
+
+## Usage
+
+### Local Development
+
+1. **Install Dependencies**:
+   ```bash
+   uv sync
+   ```
+
+2. **Run the FastAPI Server**:
+   ```bash
+   uv run uvicorn src.main:app --reload
+   ```
+
+3. **Run the Gradio UI** (in another terminal):
+   ```bash
+   uv run python -m src.ui_gradio
+   ```
+
+   Or run the Streamlit UI:
+   ```bash
+   uv run streamlit run src/ui_streamlit.py
+   ```
+
+### Podman Deployment
+
+1. **Start All Services**:
+   ```bash
+   podman-compose up -d
+   ```
+
+2. **View Logs**:
+   ```bash
+   podman-compose logs -f api
+   ```
+
+3. **Scale API Workers**:
+   ```bash
+   podman-compose up -d --scale api=3
+   ```
+
+## Configuration
+
+### Environment Variables
+
+You can configure the system using environment variables. Here are some common variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_ENV` | `development` | Environment mode |
+| `FASTAPI_PORT` | `8000` | API server port |
+| `DIRECTUS_URL` | `http://localhost:8055` | Directus endpoint |
+| `COGNEE_EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Embedding model |
+| `OPENAI_API_KEY` | - | OpenAI API key |
+
+For a full list of environment variables, see `.env.example`.
+
+## Security
+
+HadesPy is designed with security in mind:
+- **Firewall**: UFW firewall is configured to allow only necessary ports.
+- **Fail2Ban**: Protects against brute force attacks and API abuse.
+- **Podman Security**: Uses rootless containers, user namespaces, and network isolation.
+
+## Monitoring
+
+HadesPy includes monitoring tools to help you keep an eye on the system:
+- **Prometheus Metrics**: Monitor API performance.
+- **Grafana Dashboards**: Visualize system metrics.
+
+## Support and Community
+
+If you need help or have questions, you can:
+- Report issues on the GitHub Issues page.
+- Join our community forum for support and discussions.
+
+## License
+
+This project is licensed under the MIT License.
