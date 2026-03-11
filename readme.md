@@ -1,5 +1,6 @@
 # HadesPy: AI Agent Full Stack
 
+
 [![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Gradio](https://img.shields.io/badge/Gradio-FF6B6B?logo=gradio&logoColor=white)](https://gradio.app/)
@@ -7,7 +8,8 @@
 [![Podman](https://img.shields.io/badge/Podman-89D4C8?logo=podman&logoColor=white)](https://podman.io/)
 [![GitLab CI](https://img.shields.io/badge/GitLab_CI-FC6D26?logo=gitlab&logoColor=white)](https://about.gitlab.com/stages-devops-lifecycle/continuous-integration/)
 [![Directus](https://img.shields.io/badge/Directus-2F7BC2?logo=directus&logoColor=white)](https://directus.io/)
-[![License](https://img.shields.io
+[![License](https://img.shields.io/badge/License-MIT-green)](https://opensource.org/licenses/MIT)
+
 Welcome to HadesPy, an end-to-end AI agent system designed to be user-friendly and secure.
 
 ## Introduction
